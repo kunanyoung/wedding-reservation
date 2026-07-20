@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>웨딩홀 신랑신부 시식 예약</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 히어로 -->
+  <header class="hero">
+    <div class="eyebrow">WEDDING TASTING</div>
+    <h1 id="hero-title">결혼식 전, 두 분만을 위한 시식 자리</h1>
+    <p id="hero-sub">주말 예식 전 시식 일정을 안내하고, 편하게 예약 문의를 남겨보세요.</p>
+  </header>
+
+  <main>
+    <!-- 소개 카드 -->
+    <section class="wrap">
+      <h2 class="section-title">시식 안내</h2>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <!-- 예약 문의 폼 -->
+    <section class="wrap">
+      <h2 class="section-title">예약 문의 남기기</h2>
+      <div class="form-box">
+        <form id="reserve-form">
+          <div class="field">
+            <label for="groom_name">신랑 이름</label>
+            <input type="text" id="groom_name" required placeholder="예) 홍길동" />
+          </div>
+          <div class="field">
+            <label for="bride_name">신부 이름</label>
+            <input type="text" id="bride_name" required placeholder="예) 김영희" />
+          </div>
+          <div class="field">
+            <label for="phone">연락처</label>
+            <input type="text" id="phone" required placeholder="예) 010-1234-5678" />
+          </div>
+          <div class="field">
+            <label for="wedding_date">예식일</label>
+            <input type="date" id="wedding_date" required />
+          </div>
+          <div class="field">
+            <label for="wedding_time">예식 시간</label>
+            <input type="time" id="wedding_time" required />
+          </div>
+          <div class="field">
+            <label for="headcount">인원</label>
+            <input type="number" id="headcount" min="1" required placeholder="예) 2" />
+          </div>
+          <div class="field">
+            <label for="wish_date">시식 희망 날짜</label>
+            <input type="date" id="wish_date" required />
+          </div>
+          <div class="field">
+            <label for="request">요청사항</label>
+            <textarea id="request" placeholder="알레르기, 인원, 문의 시간대 등 자유롭게 적어주세요."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" id="submit-btn">예약 문의 접수하기</button>
+          <div class="msg" id="msg"></div>
+        </form>
+      </div>
+      <p style="text-align:center; margin-top:24px;">
+        <a href="admin.html" class="btn btn-ghost btn-sm">관리자 로그인</a>
+      </p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    // 소개 정보 렌더링
+    document.getElementById("hero-title").textContent = SERVICE_INFO.hero;
+    document.getElementById("hero-sub").textContent = SERVICE_INFO.subtitle;
+    document.title = SERVICE_INFO.name;
+    document.getElementById("cards").innerHTML = SERVICE_INFO.cards.map(c => `
+      <div class="card">
+        <div class="icon">${c.icon}</div>
+        <h3>${c.title}</h3>
+        <p>${c.desc}</p>
+      </div>`).join("");
+
+    // 예약 문의 접수 (Create)
+    const form = document.getElementById("reserve-form");
+    const msg = document.getElementById("msg");
+    const btn = document.getElementById("submit-btn");
+
+    function showMsg(text, ok) {
+      msg.textContent = text;
+      msg.className = "msg show " + (ok ? "ok" : "err");
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "접수 중...";
+
+      const payload = {
+        groom_name: document.getElementById("groom_name").value.trim(),   // 신랑 이름
+        bride_name: document.getElementById("bride_name").value.trim(),   // 신부 이름
+        contact: document.getElementById("phone").value.trim(),          // 연락처
+        wedding_date: document.getElementById("wedding_date").value,      // 예식일
+        wedding_time: document.getElementById("wedding_time").value,      // 예식 시간
+        headcount: Number(document.getElementById("headcount").value),   // 인원(숫자)
+        hope_date: document.getElementById("wish_date").value,           // 시식 희망 날짜
+        request: document.getElementById("request").value.trim(),        // 요청사항
+        // status, created_at 은 DB 기본값으로 자동 처리
+      };
+
+      const { error } = await supabaseClient.from("reservations").insert([payload]);
+
+      if (error) {
+        showMsg("접수에 실패했습니다. 잠시 후 다시 시도해주세요. (" + error.message + ")", false);
+      } else {
+        showMsg("예약 문의가 접수되었습니다. 확인 후 연락드리겠습니다. 감사합니다!", true);
+        form.reset();
+      }
+      btn.disabled = false;
+      btn.textContent = "예약 문의 접수하기";
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 · 시식 예약 접수 내역</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- 로그인 화면 -->
+    <div id="login-view" class="login-box" style="display:none;">
+      <h1 style="text-align:center;">관리자 로그인</h1>
+      <div class="form-box">
+        <form id="login-form">
+          <div class="field">
+            <label for="email">이메일</label>
+            <input type="email" id="email" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="password">비밀번호</label>
+            <input type="password" id="password" required autocomplete="current-password" />
+          </div>
+          <button type="submit" class="btn btn-primary" id="login-btn">로그인</button>
+          <div class="msg" id="login-msg"></div>
+        </form>
+      </div>
+      <p style="text-align:center; margin-top:20px;">
+        <a href="index.html" class="btn btn-ghost btn-sm">← 고객 페이지로</a>
+      </p>
+    </div>
+
+    <!-- 접수 내역 화면 -->
+    <div id="admin-view" style="display:none;">
+      <div class="admin-head">
+        <h1>시식 예약 접수 내역</h1>
+        <div>
+          <span id="admin-email" style="color:var(--muted); font-size:13px; margin-right:12px;"></span>
+          <button class="btn btn-ghost btn-sm" id="logout-btn">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="msg" id="admin-msg"></div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>접수 시각</th>
+              <th>신랑</th>
+              <th>신부</th>
+              <th>연락처</th>
+              <th>예식일</th>
+              <th>예식 시간</th>
+              <th>인원</th>
+              <th>시식 희망일</th>
+              <th>요청사항</th>
+              <th>상태</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" style="display:none;">아직 접수된 문의가 없습니다.</div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const loginView = document.getElementById("login-view");
+    const adminView = document.getElementById("admin-view");
+    const rowsEl = document.getElementById("rows");
+    const emptyEl = document.getElementById("empty");
+    const adminMsg = document.getElementById("admin-msg");
+
+    function showAdminMsg(text, ok) {
+      adminMsg.textContent = text;
+      adminMsg.className = "msg show " + (ok ? "ok" : "err");
+      setTimeout(() => (adminMsg.className = "msg"), 3000);
+    }
+
+    function esc(s) {
+      return (s ?? "").toString()
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function fmtDateTime(iso) {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      return d.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    // 화면 전환
+    async function refreshView() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        loginView.style.display = "none";
+        adminView.style.display = "block";
+        document.getElementById("admin-email").textContent = session.user.email;
+        loadReservations();
+      } else {
+        loginView.style.display = "block";
+        adminView.style.display = "none";
+      }
+    }
+
+    // 로그인
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("login-btn");
+      const loginMsg = document.getElementById("login-msg");
+      btn.disabled = true; btn.textContent = "로그인 중...";
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: document.getElementById("email").value.trim(),
+        password: document.getElementById("password").value,
+      });
+
+      if (error) {
+        loginMsg.textContent = "로그인 실패: 이메일 또는 비밀번호를 확인하세요.";
+        loginMsg.className = "msg show err";
+      } else {
+        loginMsg.className = "msg";
+        refreshView();
+      }
+      btn.disabled = false; btn.textContent = "로그인";
+    });
+
+    // 로그아웃
+    document.getElementById("logout-btn").addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      refreshView();
+    });
+
+    // 접수 내역 조회 (Read) — 최신순
+    async function loadReservations() {
+      const { data, error } = await supabaseClient
+        .from("reservations")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) { showAdminMsg("조회 실패: " + error.message, false); return; }
+
+      if (!data || data.length === 0) {
+        rowsEl.innerHTML = "";
+        emptyEl.style.display = "block";
+        return;
+      }
+      emptyEl.style.display = "none";
+
+      rowsEl.innerHTML = data.map(r => {
+        const isDone = r.status === "확정";
+        return `
+        <tr>
+          <td>${fmtDateTime(r.created_at)}</td>
+          <td>${esc(r.groom_name)}</td>
+          <td>${esc(r.bride_name)}</td>
+          <td>${esc(r.contact)}</td>
+          <td>${esc(r.wedding_date)}</td>
+          <td>${esc(r.wedding_time)}</td>
+          <td>${esc(r.headcount)}명</td>
+          <td>${esc(r.hope_date)}</td>
+          <td class="req">${esc(r.request) || "-"}</td>
+          <td><span class="badge ${isDone ? "done" : "wait"}">${esc(r.status)}</span></td>
+          <td>
+            <div class="row-actions">
+              ${isDone ? "" : `<button class="btn btn-sm btn-confirm" onclick="confirmReservation(${r.id})">확정</button>`}
+              <button class="btn btn-sm btn-delete" onclick="deleteReservation(${r.id})">삭제</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    // 상태 변경 (Update) 대기 → 확정
+    window.confirmReservation = async (id) => {
+      const { error } = await supabaseClient
+        .from("reservations").update({ status: "확정" }).eq("id", id);
+      if (error) showAdminMsg("변경 실패: " + error.message, false);
+      else { showAdminMsg("확정 처리되었습니다.", true); loadReservations(); }
+    };
+
+    // 삭제 (Delete)
+    window.deleteReservation = async (id) => {
+      if (!confirm("이 접수를 삭제하시겠습니까?")) return;
+      const { error } = await supabaseClient.from("reservations").delete().eq("id", id);
+      if (error) showAdminMsg("삭제 실패: " + error.message, false);
+      else { showAdminMsg("삭제되었습니다.", true); loadReservations(); }
+    };
+
+    refreshView();
+  </script>
+</body>
+</html>
