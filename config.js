@@ -7,8 +7,8 @@
 //   - anon public key   → SUPABASE_ANON_KEY
 // ============================================================
 
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://qqymbmhpdbyshsvolykg.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeW1ibWhwZGJ5c2hzdm9seWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NTU3ODUsImV4cCI6MjA5OTIzMTc4NX0.ZC2ixWVh99476Qgg7j8ylYewbcrvY39l5ln1Qb-sh0E";
 
 // 서비스 소개용 정보 (자유롭게 수정)
 const SERVICE_INFO = {
